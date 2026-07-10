@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { getToken } from "./auth";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import "./Blog.css";
 
 export default function Blog({ user }) {
@@ -8,6 +10,8 @@ export default function Blog({ user }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [image, setImage] = useState(null);
+  const [search, setSearch] = useState("");
+  const [sortOption, setSortOption] = useState("newest");
 
   const fetchPosts = async () => {
     try {
@@ -47,35 +51,42 @@ export default function Blog({ user }) {
 
   // 🔥 CREATE POST WITH IMAGE
   const createPost = async () => {
-    if (!title.trim() || !description.trim()) {
-      alert("Fill all fields");
-      return;
-    }
+  if (!title.trim() || !description.trim()) {
+    toast.error("Please fill in all fields.");
+    return;
+  }
 
-    try {
-      const uploadedImage = await uploadImage();
+  if (description.length > 500) {
+    toast.warning("Description cannot exceed 500 characters.");
+    return;
+  }
 
-      await axios.post(
-        "http://localhost:1337/api/posts",
-        {
-          data: {
-            Title: title,
-            Description: description,
-            Image: uploadedImage ? uploadedImage.id : null,
-          },
-        }
-      );
+  try {
+    const uploadedImage = await uploadImage();
 
-      setTitle("");
-      setDescription("");
-      setImage(null);
+    await axios.post(
+      "http://localhost:1337/api/posts",
+      {
+        data: {
+          Title: title,
+          Description: description,
+          Image: uploadedImage ? uploadedImage.id : null,
+        },
+      }
+    );
 
-      fetchPosts();
-    } catch (error) {
-      console.error(error);
-      alert("Failed to create post");
-    }
-  };
+    setTitle("");
+    setDescription("");
+    setImage(null);
+
+    toast.success("Post created successfully!");
+
+    fetchPosts();
+  } catch (error) {
+    console.error(error);
+    toast.error("Failed to create post.");
+  }
+};
 
   const deletePost = async (documentId) => {
   try {
@@ -87,13 +98,14 @@ export default function Blog({ user }) {
         },
       }
     );
+      toast.success("Post deleted successfully!");
 
     fetchPosts();
   } catch (error) {
     console.error("DELETE ERROR:", error.response?.data || error);
-    alert("Delete failed");
+    toast.error("Failed to delete post.");
   }
-};
+  };
 
   return (
     <div className="blog-container">
@@ -107,11 +119,23 @@ export default function Blog({ user }) {
           onChange={(e) => setTitle(e.target.value)}
         />
 
-        <input
-          placeholder="Description"
+        <textarea
+          placeholder="Write your post..."
           value={description}
           onChange={(e) => setDescription(e.target.value)}
+          maxLength={500}
         />
+        <p
+          className={`char-counter ${
+            description.length >= 500
+            ? "danger"
+            : description.length >= 450
+            ? "warning"
+            : ""
+        }`}
+        > 
+        {description.length} / 500
+        </p>
 
         {/* IMAGE INPUT */}
         <input
@@ -122,10 +146,51 @@ export default function Blog({ user }) {
 
         <button onClick={createPost}>Add Post</button>
       </div>
+      {/* SEARCH BAR */}
+      <div className="search-bar">
+        <input
+          type="text"
+          placeholder="Search posts..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+      </div>
+
+      <div className="search-bar">
+        <label> Sort By: </label>
+
+        <select value={sortOption} onChange={(e) => setSortOption(e.target.value)}>
+          <option value="newest"> Newest First</option>
+          <option value="oldest"> Oldest First</option>
+          <option value="az"> A - Z</option>
+        </select>
+      </div>
 
       {/* POSTS */}
       <div className="posts-grid">
-        {posts.map((post) => {
+        {posts
+          .filter((post) => {
+            const data = post.attributes ?? post;
+
+            return data.Title.toLowerCase().includes(
+              search.toLowerCase()
+            );
+          })
+          .sort((a, b) => {
+            const postA = a.attributes ?? a;
+            const postB = b.attributes ?? b;
+
+            if (sortOption === "az"){
+              return postA.Title.localeCompare(postB.Title);
+            }
+
+            if (sortOption === "oldest"){
+              return new Date(postA.createdAt) - new Date(postB.createdAt);
+            } 
+
+            return new Date(postB.createdAt) - new Date(postA.createdAt)
+          })
+          .map((post) => {
           const data = post.attributes ?? post;
 
           const title = data.Title;
@@ -152,6 +217,20 @@ export default function Blog({ user }) {
             </div>
           );
         })}
+      </div>
+      <div className="blog-container">
+
+      ...
+
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        pauseOnHover
+      />
+
       </div>
     </div>
   );
