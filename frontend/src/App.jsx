@@ -7,7 +7,7 @@ import { logout } from "./auth";
 export default function App() {
   const [user, setUser] = useState(null);
 
-  // 🔥 SIGNUP IS FIRST SCREEN
+  // SIGNUP IS FIRST SCREEN
   const [page, setPage] = useState("register");
 
   if (!user) {
