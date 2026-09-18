@@ -1,219 +1,221 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
-import { getToken } from "./auth";
+import { Link } from "react-router-dom";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import * as blogService from "./services/blogService";
+import LoadingSpinner from "./components/LoadingSpinner";
 import "./Blog.css";
+
+const POSTS_PER_PAGE = 5;
+
+const CATEGORIES = ["General", "Technology", "Education", "Lifestyle"];
 
 export default function Blog({ user }) {
   const [posts, setPosts] = useState([]);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [category, setCategory] = useState("General");
   const [image, setImage] = useState(null);
   const [search, setSearch] = useState("");
   const [sortOption, setSortOption] = useState("newest");
+  const [categoryFilter, setCategoryFilter] = useState("All");
 
-  // EDIT POST STATE
+  // Edit state
   const [editingPost, setEditingPost] = useState(null);
   const [editTitle, setEditTitle] = useState("");
   const [editDescription, setEditDescription] = useState("");
+  const [editCategory, setEditCategory] = useState("General");
 
-  // DELETE CONFIRMATION MODAL STATE
+  // Delete confirmation state
   const [postToDelete, setPostToDelete] = useState(null);
 
-  const fetchPosts = async () => {
-    try {
-      const res = await axios.get(
-        "http://localhost:1337/api/posts?populate=*"
-      );
+  // Loading states (Task 2)
+  const [loadingPosts, setLoadingPosts] = useState(false);
+  const [creatingPost, setCreatingPost] = useState(false);
+  const [updatingPost, setUpdatingPost] = useState(false);
+  const [deletingPost, setDeletingPost] = useState(false);
 
-      setPosts(res.data.data || []);
+  // Pagination state (Task 1)
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // ─── Fetch Posts ──────────────────────────────────────────────────────────
+
+  const loadPosts = async () => {
+    setLoadingPosts(true);
+    try {
+      const data = await blogService.fetchPosts();
+      setPosts(data);
     } catch (error) {
       console.error(error);
+      toast.error("Failed to load posts. Please try again.");
+    } finally {
+      setLoadingPosts(false);
     }
   };
 
   useEffect(() => {
-    fetchPosts();
+    loadPosts();
   }, []);
 
-  // UPLOAD IMAGE FIRST
-  const uploadImage = async () => {
-    if (!image) return null;
+  // ─── Create Post ──────────────────────────────────────────────────────────
 
-    const formData = new FormData();
-    formData.append("files", image);
-
-    const res = await axios.post(
-      "http://localhost:1337/api/upload",
-      formData,
-      {
-        headers: {
-          Authorization: `Bearer ${getToken()}`,
-        },
-      }
-    );
-
-    return res.data[0]; // uploaded file
-  };
-
-  // CREATE POST WITH IMAGE
-  const createPost = async () => {
+  const handleCreate = async () => {
     if (!title.trim() || !description.trim()) {
       toast.error("Please fill in all fields.");
       return;
     }
-
     if (description.length > 500) {
       toast.warning("Description cannot exceed 500 characters.");
       return;
     }
 
+    setCreatingPost(true);
     try {
-      const uploadedImage = await uploadImage();
-
-      await axios.post(
-        "http://localhost:1337/api/posts",
-        {
-          data: {
-            Title: title,
-            Description: description,
-            Image: uploadedImage ? uploadedImage.id : null,
-          },
-        }
-      );
-
+      await blogService.createPost({ title, description, category, imageFile: image });
       setTitle("");
       setDescription("");
+      setCategory("General");
       setImage(null);
-
       toast.success("Post created successfully!");
-
-      fetchPosts();
+      loadPosts();
     } catch (error) {
       console.error(error);
       toast.error("Failed to create post.");
+    } finally {
+      setCreatingPost(false);
     }
   };
 
-  // START EDITING A POST
+  // ─── Edit Post ────────────────────────────────────────────────────────────
+
   const startEdit = (post) => {
     const data = post.attributes ?? post;
     setEditingPost(post.documentId);
     setEditTitle(data.Title);
     setEditDescription(data.Description);
+    setEditCategory(data.Category || "General");
   };
 
   const cancelEdit = () => {
     setEditingPost(null);
     setEditTitle("");
     setEditDescription("");
+    setEditCategory("General");
   };
 
-  //  UPDATE POST
-  const updatePost = async () => {
+  const handleUpdate = async () => {
     if (!editTitle.trim() || !editDescription.trim()) {
       toast.error("Please fill in all fields.");
       return;
     }
-
     if (editDescription.length > 500) {
       toast.warning("Description cannot exceed 500 characters.");
       return;
     }
 
+    setUpdatingPost(true);
     try {
-      await axios.put(
-        `http://localhost:1337/api/posts/${editingPost}`,
-        {
-          data: {
-            Title: editTitle,
-            Description: editDescription,
-          },
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${getToken()}`,
-          },
-        }
-      );
-
+      await blogService.updatePost(editingPost, {
+        title: editTitle,
+        description: editDescription,
+        category: editCategory,
+      });
       toast.success("Post updated successfully!");
-
       cancelEdit();
-      fetchPosts();
+      loadPosts();
     } catch (error) {
-      console.error("UPDATE ERROR:", error.response?.data || error);
+      console.error(error);
       toast.error("Failed to update post.");
+    } finally {
+      setUpdatingPost(false);
     }
   };
 
-  const deletePost = async (documentId) => {
-    try {
-      await axios.delete(
-        `http://localhost:1337/api/posts/${documentId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${getToken()}`,
-          },
-        }
-      );
-      toast.success("Post deleted successfully!");
+  // ─── Delete Post ──────────────────────────────────────────────────────────
 
-      fetchPosts();
-    } catch (error) {
-      console.error("DELETE ERROR:", error.response?.data || error);
-      toast.error("Failed to delete post.");
-    }
-  };
-
-  // 🔥 DELETE CONFIRMATION HANDLERS
-  const requestDelete = (documentId) => {
-    setPostToDelete(documentId);
-  };
-
-  const cancelDelete = () => {
-    setPostToDelete(null);
-  };
+  const requestDelete = (documentId) => setPostToDelete(documentId);
+  const cancelDelete = () => setPostToDelete(null);
 
   const confirmDelete = async () => {
     if (!postToDelete) return;
-    await deletePost(postToDelete);
-    setPostToDelete(null);
+    setDeletingPost(true);
+    try {
+      await blogService.deletePost(postToDelete);
+      toast.success("Post deleted successfully!");
+      setPostToDelete(null);
+      loadPosts();
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to delete post.");
+    } finally {
+      setDeletingPost(false);
+    }
   };
 
-  // 🔥 FILTER + SORT
+  // ─── Filter + Sort (Task 6 category filter included) ─────────────────────
+
   const filteredPosts = posts
     .filter((post) => {
       const data = post.attributes ?? post;
-
-      return data.Title.toLowerCase().includes(search.toLowerCase());
+      const matchesSearch = data.Title.toLowerCase().includes(search.toLowerCase());
+      const matchesCategory =
+        categoryFilter === "All" || data.Category === categoryFilter;
+      return matchesSearch && matchesCategory;
     })
     .sort((a, b) => {
       const postA = a.attributes ?? a;
       const postB = b.attributes ?? b;
-
-      if (sortOption === "az") {
-        return postA.Title.localeCompare(postB.Title);
-      }
-
-      if (sortOption === "oldest") {
+      if (sortOption === "az") return postA.Title.localeCompare(postB.Title);
+      if (sortOption === "oldest")
         return new Date(postA.createdAt) - new Date(postB.createdAt);
-      }
-
       return new Date(postB.createdAt) - new Date(postA.createdAt);
     });
+
+  // ─── Pagination (Task 1) ──────────────────────────────────────────────────
+
+  const totalPages = Math.max(1, Math.ceil(filteredPosts.length / POSTS_PER_PAGE));
+
+  // Reset to page 1 whenever the filtered set changes
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+
+  const paginatedPosts = filteredPosts.slice(
+    (safeCurrentPage - 1) * POSTS_PER_PAGE,
+    safeCurrentPage * POSTS_PER_PAGE
+  );
+
+  const goToPage = (page) => {
+    setCurrentPage(Math.max(1, Math.min(page, totalPages)));
+  };
+
+  // Reset page when search, sort, or category filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, sortOption, categoryFilter]);
+
+  // ─── Category counts (bonus Task 6) ──────────────────────────────────────
+
+  const categoryCounts = CATEGORIES.reduce((acc, cat) => {
+    acc[cat] = posts.filter((p) => {
+      const data = p.attributes ?? p;
+      return data.Category === cat;
+    }).length;
+    return acc;
+  }, {});
+
+  // ─── Render ───────────────────────────────────────────────────────────────
 
   return (
     <div className="blog-container">
       <h1>Welcome, {user.username}</h1>
 
-      {/* CREATE POST */}
+      {/* ── CREATE FORM ── */}
       <div className="post-form">
+        <h2>New Post</h2>
         <input
           placeholder="Title"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
+          disabled={creatingPost}
         />
 
         <textarea
@@ -221,6 +223,7 @@ export default function Blog({ user }) {
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           maxLength={500}
+          disabled={creatingPost}
         />
         <p
           className={`char-counter ${
@@ -234,17 +237,33 @@ export default function Blog({ user }) {
           {description.length} / 500
         </p>
 
-        {/* IMAGE INPUT */}
+        {/* Category select (Task 6) */}
+        <select
+          className="category-select"
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+          disabled={creatingPost}
+        >
+          {CATEGORIES.map((cat) => (
+            <option key={cat} value={cat}>
+              {cat}
+            </option>
+          ))}
+        </select>
+
         <input
           type="file"
           accept="image/*"
           onChange={(e) => setImage(e.target.files[0])}
+          disabled={creatingPost}
         />
 
-        <button onClick={createPost}>Add Post</button>
+        <button onClick={handleCreate} disabled={creatingPost}>
+          {creatingPost ? <LoadingSpinner size="small" /> : "Add Post"}
+        </button>
       </div>
 
-      {/* EDIT POST */}
+      {/* ── EDIT FORM ── */}
       {editingPost && (
         <div className="post-form">
           <h2>Edit Post</h2>
@@ -252,6 +271,7 @@ export default function Blog({ user }) {
             placeholder="Title"
             value={editTitle}
             onChange={(e) => setEditTitle(e.target.value)}
+            disabled={updatingPost}
           />
 
           <textarea
@@ -259,6 +279,7 @@ export default function Blog({ user }) {
             value={editDescription}
             onChange={(e) => setEditDescription(e.target.value)}
             maxLength={500}
+            disabled={updatingPost}
           />
           <p
             className={`char-counter ${
@@ -272,12 +293,32 @@ export default function Blog({ user }) {
             {editDescription.length} / 500
           </p>
 
-          <button onClick={updatePost}>Update</button>
-          <button onClick={cancelEdit}>Cancel</button>
+          {/* Category select for edit (Task 6) */}
+          <select
+            className="category-select"
+            value={editCategory}
+            onChange={(e) => setEditCategory(e.target.value)}
+            disabled={updatingPost}
+          >
+            {CATEGORIES.map((cat) => (
+              <option key={cat} value={cat}>
+                {cat}
+              </option>
+            ))}
+          </select>
+
+          <div className="form-actions">
+            <button onClick={handleUpdate} disabled={updatingPost}>
+              {updatingPost ? <LoadingSpinner size="small" /> : "Update"}
+            </button>
+            <button className="cancel-edit-btn" onClick={cancelEdit} disabled={updatingPost}>
+              Cancel
+            </button>
+          </div>
         </div>
       )}
 
-      {/* SEARCH BAR */}
+      {/* ── SEARCH + SORT + CATEGORY FILTER ── */}
       <div className="search-bar">
         <input
           type="text"
@@ -287,73 +328,154 @@ export default function Blog({ user }) {
         />
       </div>
 
-      <div className="search-bar">
-        <label> Sort By: </label>
+      <div className="filter-row">
+        <div className="sort-bar">
+          <label>Sort By:</label>
+          <select value={sortOption} onChange={(e) => setSortOption(e.target.value)}>
+            <option value="newest">Newest First</option>
+            <option value="oldest">Oldest First</option>
+            <option value="az">A – Z</option>
+          </select>
+        </div>
 
-        <select value={sortOption} onChange={(e) => setSortOption(e.target.value)}>
-          <option value="newest"> Newest First</option>
-          <option value="oldest"> Oldest First</option>
-          <option value="az"> A - Z</option>
-        </select>
+        {/* Category filter (Task 6) */}
+        <div className="sort-bar">
+          <label>Category:</label>
+          <select
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+          >
+            <option value="All">
+              All Categories ({posts.length})
+            </option>
+            {CATEGORIES.map((cat) => (
+              <option key={cat} value={cat}>
+                {cat} ({categoryCounts[cat] ?? 0})
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
-      {/* POSTS */}
-      {filteredPosts.length === 0 ? (
+      {/* ── POST LIST ── */}
+      {loadingPosts ? (
+        <div className="loading-state">
+          <LoadingSpinner />
+          <p>Loading posts…</p>
+        </div>
+      ) : filteredPosts.length === 0 ? (
         <p className="no-posts">No posts found.</p>
       ) : (
-        <div className="posts-grid">
-          {filteredPosts.map((post) => {
-            const data = post.attributes ?? post;
+        <>
+          <div className="posts-grid">
+            {paginatedPosts.map((post) => {
+              const data = post.attributes ?? post;
+              const postTitle = data.Title;
+              const desc = data.Description;
+              const imageUrl = data.Image?.url;
+              const postCategory = data.Category;
 
-            const postTitle = data.Title;
-            const desc = data.Description;
-            const imageUrl = data.Image?.url;
+              return (
+                <div className="post-card" key={post.id}>
+                  {imageUrl && (
+                    <img
+                      src={`${import.meta.env.VITE_API_URL}${imageUrl}`}
+                      alt={postTitle}
+                    />
+                  )}
 
-            return (
-              <div className="post-card" key={post.id}>
-                {imageUrl && (
-                  <img
-                    src={`http://localhost:1337${imageUrl}`}
-                    alt={postTitle}
-                  />
-                )}
+                  <div className="post-content">
+                    {postCategory && (
+                      <span className="category-badge">{postCategory}</span>
+                    )}
+                    <h3>{postTitle}</h3>
+                    <p>{desc}</p>
 
-                <div className="post-content">
-                  <h3>{postTitle}</h3>
-                  <p>{desc}</p>
+                    <div className="post-actions">
+                      {/* Task 5 – View Post link */}
+                      <Link
+                        to={`/posts/${post.documentId}`}
+                        className="view-btn"
+                      >
+                        Read More
+                      </Link>
 
-                  <div className="post-actions">
-                    <button
-                      className="edit-btn"
-                      onClick={() => startEdit(post)}
-                    >
-                      Edit
-                    </button>
+                      <button
+                        className="edit-btn"
+                        onClick={() => startEdit(post)}
+                      >
+                        Edit
+                      </button>
 
-                    <button
-                      className="delete-btn"
-                      onClick={() => requestDelete(post.documentId)}
-                    >
-                      Delete
-                    </button>
+                      <button
+                        className="delete-btn"
+                        onClick={() => requestDelete(post.documentId)}
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </div>
                 </div>
+              );
+            })}
+          </div>
+
+          {/* ── PAGINATION (Task 1) ── */}
+          {totalPages > 1 && (
+            <div className="pagination">
+              <button
+                onClick={() => goToPage(safeCurrentPage - 1)}
+                disabled={safeCurrentPage === 1}
+              >
+                ← Previous
+              </button>
+
+              {/* Clickable page numbers (bonus) */}
+              <div className="page-numbers">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                  <button
+                    key={page}
+                    onClick={() => goToPage(page)}
+                    className={page === safeCurrentPage ? "page-btn active" : "page-btn"}
+                  >
+                    {page}
+                  </button>
+                ))}
               </div>
-            );
-          })}
-        </div>
+
+              <span className="page-info">
+                Page {safeCurrentPage} of {totalPages}
+              </span>
+
+              <button
+                onClick={() => goToPage(safeCurrentPage + 1)}
+                disabled={safeCurrentPage === totalPages}
+              >
+                Next →
+              </button>
+            </div>
+          )}
+        </>
       )}
 
-      {/* DELETE CONFIRMATION MODAL */}
+      {/* ── DELETE CONFIRMATION MODAL ── */}
       {postToDelete && (
         <div className="modal-overlay">
           <div className="modal">
             <p>Are you sure you want to delete this post?</p>
             <div className="modal-actions">
-              <button className="confirm-btn" onClick={confirmDelete}>
-                Confirm
+              <button
+                className="confirm-btn"
+                onClick={confirmDelete}
+                disabled={deletingPost}
+              >
+                {deletingPost ? <LoadingSpinner size="small" /> : "Confirm"}
               </button>
-              <button className="cancel-btn" onClick={cancelDelete}>
+              <button
+                className="cancel-btn"
+                onClick={cancelDelete}
+                disabled={deletingPost}
+              >
                 Cancel
               </button>
             </div>

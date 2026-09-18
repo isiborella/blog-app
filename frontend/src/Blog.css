@@ -243,3 +243,144 @@
 .modal-actions .cancel-btn:hover {
   background: #d1d5db;
 }
+
+/* ── PAGINATION (Task 1) ─────────────────────────────────────────── */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 36px 0 20px;
+}
+
+.pagination button {
+  background: #2563eb;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: background 0.2s, opacity 0.2s;
+}
+
+.pagination button:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.pagination button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.page-numbers {
+  display: flex;
+  gap: 6px;
+}
+
+.page-btn {
+  background: #e5e7eb !important;
+  color: #1e293b !important;
+  min-width: 36px;
+  padding: 6px 10px !important;
+}
+
+.page-btn.active {
+  background: #2563eb !important;
+  color: white !important;
+}
+
+.page-info {
+  color: #64748b;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+/* ── CATEGORY BADGE (Task 6) ─────────────────────────────────────── */
+.category-badge {
+  display: inline-block;
+  background: #dbeafe;
+  color: #1d4ed8;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 3px 8px;
+  border-radius: 20px;
+  margin-bottom: 8px;
+}
+
+/* ── CATEGORY + SORT FILTER ROW ──────────────────────────────────── */
+.filter-row {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin: 10px 0 25px;
+}
+
+.filter-row .sort-bar {
+  margin: 0;
+}
+
+/* ── CATEGORY SELECT IN FORM ─────────────────────────────────────── */
+.category-select {
+  display: block;
+  width: 100%;
+  max-width: 300px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 14px;
+  background: white;
+  cursor: pointer;
+}
+
+/* ── FORM ACTIONS ROW ────────────────────────────────────────────── */
+.form-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.cancel-edit-btn {
+  background: #e5e7eb !important;
+  color: #1e293b !important;
+}
+
+.cancel-edit-btn:hover {
+  background: #d1d5db !important;
+}
+
+/* ── LOADING STATE ───────────────────────────────────────────────── */
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 0;
+  gap: 14px;
+  color: #64748b;
+  font-size: 15px;
+}
+
+/* ── VIEW / READ MORE BUTTON ─────────────────────────────────────── */
+.view-btn {
+  display: inline-block;
+  margin-top: 10px;
+  background: #0f172a;
+  color: white;
+  text-decoration: none;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  transition: background 0.2s, transform 0.15s;
+}
+
+.view-btn:hover {
+  background: #1e293b;
+  transform: translateY(-1px);
+}

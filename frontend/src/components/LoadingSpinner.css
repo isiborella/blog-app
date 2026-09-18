@@ -1,0 +1,38 @@
+.spinner {
+  display: inline-block;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  vertical-align: middle;
+}
+
+/* When used on a dark background inside a button the white border looks great.
+   For the page-level "loading posts" spinner we use a blue variant. */
+.loading-state .spinner {
+  border-color: rgba(37, 99, 235, 0.2);
+  border-top-color: #2563eb;
+}
+
+.spinner--small {
+  width: 14px;
+  height: 14px;
+  border-width: 2px;
+}
+
+.spinner--medium {
+  width: 32px;
+  height: 32px;
+}
+
+.spinner--large {
+  width: 48px;
+  height: 48px;
+  border-width: 4px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
