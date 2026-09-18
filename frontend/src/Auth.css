@@ -93,3 +93,28 @@ body {
 .switch-text span:hover {
   text-decoration: underline;
 }
+
+/* ERROR MESSAGE */
+.auth-error {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #fca5a5;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  margin-bottom: 8px;
+  text-align: center;
+}
+
+/* DISABLED STATE */
+.auth-card button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.auth-card input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
